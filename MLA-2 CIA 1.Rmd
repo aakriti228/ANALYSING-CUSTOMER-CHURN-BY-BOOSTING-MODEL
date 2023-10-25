@@ -1,0 +1,143 @@
+---
+title: "AKRITI TOPPO MLA|| CIA 1"
+author: "AKRITI TOPPO"
+date: "2023-10-22"
+output: word_document
+---
+
+```{r}
+
+# install the necessary packages
+
+install.packages("caret")
+install.packages("xgboost")
+install.packages("ada")
+install.packages("pROC")
+```
+
+
+```{r}
+# Load required libraries
+library(caret)
+library(xgboost)
+library(ada)
+library(pROC)
+```
+
+
+```{r}
+data
+```
+```{r}
+data1=data[-1]
+```
+
+
+```{r}
+# Load your dataset
+data <- read.csv("C:/Users/HP/Downloads/MLA CIA - 4.csv")
+data
+```
+
+
+```{r}
+# Encoding the categorical variables as factors
+data1$Gender=as.numeric(factor(data1$Gender,levels = c('M','F'),labels = c(1,2)))
+data1$Occupation=as.numeric(factor(data1$Occupation,levels = c('SAL','PROF','SELF-EMP','SENP'),labels = c(1,2,3,4)))
+data1$AGE_BKT=as.numeric(factor(data1$AGE_BKT,levels = c('26-30','41-45','>50','36-40','46-50','31-35','<25'),labels = c(1,2,3,4,5,6,7)))
+
+```
+
+
+```{r}
+
+install.packages("caTools")
+library(caTools)
+```
+
+
+```{r}
+# Split data into train and test sets
+set.seed(123)
+split = sample.split(data1$Target, SplitRatio = 0.8)
+training_set = subset(data1, split == TRUE)
+test_set = subset(data1, split == FALSE)
+
+# Fitting XGBoost to the Training set
+classifier = xgboost(data = as.matrix(training_set[-11]),label=training_set$Target,nrounds = 10)
+
+# Predicting the Test set results
+y_pred = predict(classifier, newdata = as.matrix(test_set[-11]))
+y_pred =(y_pred>=0.5)
+```
+
+
+```{r}
+# Confusion Matrix for XGBoost
+confusion_xgboost <- table(test_set$Target,y_pred)
+print("Confusion Matrix for XGBoost:")
+print(confusion_xgboost)
+```
+
+
+```{r}
+# Plot ROC curve for XG boost
+roc_curve= roc(test_set$Target, as.numeric(y_pred))
+plot(roc_curve, main = "ROC Curve for XGBoost", col="#ff8230")
+```
+
+
+```{r}
+auc(roc_curve)
+```
+
+```{r}
+# Fitting AdaBoost to the Training set
+boost_model = ada(formula = Target ~ .,data = training_set,type = "discrete",control = rpart.control(cp=0.02))
+
+
+# Predicting the Test set results
+predictions_ada=predict(boost_model,test_set,type="prob")
+
+```
+
+
+```{r}
+# confusion matrix for Ada boost 
+# Predicted class labels based on a threshold (e.g., 0.5)
+predicted_labels <- ifelse(predictions_ada[, 1] >= 0.5, 1, 0)
+
+# Create the confusion matrix
+confusion_ada <- table(test_set$Target, predicted_labels)
+
+# Print the confusion matrix
+print("Confusion Matrix for AdaBoost:")
+print(confusion_ada)
+
+```
+
+
+```{r}
+# ROC Curve 
+roc_obj1 = roc(test_set$Target, predictions_ada[,1],levels = c("0", "1"))
+plot(roc_obj1, main = "ROC Curve for AdaBoost Model", col="#c52727")
+```
+
+
+```{r}
+auc(roc_obj1)
+```
+
+
+
+
+
+```{r}
+# Plot both ROC curves on the same plot
+plot(roc_curve, col = "#ff8400", main = "ROC Curve for XGBoost and AdaBoost")
+lines(roc_obj1, col = "#c52727")
+
+# Add a legend to differentiate the curves
+legend("bottomright", legend = c("XGBoost", "AdaBoost"), col = c("#ff8400", "#c52727"), lty = 1)
+```
+
